@@ -66,7 +66,7 @@ class ClientRequest:
                  chunked=None, expect100=False,
                  loop=None, response_class=None,
                  proxy=None, proxy_auth=None, proxy_from_env=False,
-                 timer=None, session=None):
+                 timer=None, session=None, proxy_headers=None):
 
         if loop is None:
             loop = asyncio.get_event_loop()
@@ -99,7 +99,7 @@ class ClientRequest:
         self.update_cookies(cookies)
         self.update_content_encoding(data)
         self.update_auth(auth)
-        self.update_proxy(proxy, proxy_auth, proxy_from_env)
+        self.update_proxy(proxy, proxy_auth, proxy_from_env, proxy_headers)
 
         self.update_body_from_data(data)
         self.update_transfer_encoding()
@@ -295,7 +295,7 @@ class ClientRequest:
         if expect:
             self._continue = helpers.create_future(self.loop)
 
-    def update_proxy(self, proxy, proxy_auth, proxy_from_env):
+    def update_proxy(self, proxy, proxy_auth, proxy_from_env, proxy_headers):
         if proxy_from_env and not proxy:
             proxy_url = getproxies().get(self.original_url.scheme)
             proxy = URL(proxy_url) if proxy_url else None
@@ -305,6 +305,7 @@ class ClientRequest:
             raise ValueError("proxy_auth must be None or BasicAuth() tuple")
         self.proxy = proxy
         self.proxy_auth = proxy_auth
+        self.proxy_headers = proxy_headers
 
     def keep_alive(self):
         if self.version < HttpVersion10:

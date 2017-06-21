@@ -152,7 +152,8 @@ class ClientSession:
                  read_until_eof=True,
                  proxy=None,
                  proxy_auth=None,
-                 timeout=sentinel):
+                 timeout=sentinel,
+                 proxy_headers=None):
 
         # NOTE: timeout clamps existing connect and read timeouts.  We cannot
         # set the default to None because we need to detect if the user wants
@@ -183,6 +184,8 @@ class ClientSession:
 
         # Merge with default headers and transform to CIMultiDict
         headers = self._prepare_headers(headers)
+        proxy_headers = self.__prepare_headers(proxy_headers)
+
         if auth is None:
             auth = self._default_auth
         # It would be confusing if we support explicit Authorization header
@@ -223,7 +226,7 @@ class ClientSession:
                         expect100=expect100, loop=self._loop,
                         response_class=self._response_class,
                         proxy=proxy, proxy_auth=proxy_auth, timer=timer,
-                        session=self)
+                        session=self, proxy_headers=proxy_headers)
 
                     # connection timeout
                     try:
