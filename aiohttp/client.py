@@ -184,7 +184,7 @@ class ClientSession:
 
         # Merge with default headers and transform to CIMultiDict
         headers = self._prepare_headers(headers)
-        proxy_headers = self.__prepare_headers(proxy_headers)
+        proxy_headers = self._prepare_headers(proxy_headers)
 
         if auth is None:
             auth = self._default_auth
