@@ -21,7 +21,6 @@ from urllib.parse import quote
 from async_timeout import timeout
 
 from . import hdrs
-from .abc import AbstractCookieJar
 
 
 try:
@@ -40,7 +39,7 @@ else:
 
 
 __all__ = ('BasicAuth', 'create_future', 'parse_mimetype',
-           'Timeout', 'ensure_future', 'noop', 'DummyCookieJar')
+           'Timeout', 'ensure_future', 'noop')
 
 
 sentinel = object()
@@ -63,13 +62,19 @@ else:
 
 class _BaseCoroMixin(base):
 
-    __slots__ = ('_coro', 'send', 'throw', 'close')
+    __slots__ = ('_coro')
 
     def __init__(self, coro):
         self._coro = coro
-        self.send = coro.send
-        self.throw = coro.throw
-        self.close = coro.close
+
+    def send(self, arg):
+        return self._coro.send(arg)
+
+    def throw(self, arg):
+        return self._coro.throw(arg)
+
+    def close(self):
+        return self._coro.close()
 
     @property
     def gi_frame(self):
@@ -117,6 +122,10 @@ class _CoroGuard(_BaseCoroMixin):
         super().__init__(coro)
         self._msg = msg
         self._awaited = False
+
+    def send(self, arg):
+        self._awaited = True
+        return self._coro.send(arg)
 
     @asyncio.coroutine
     def __iter__(self):
@@ -267,7 +276,7 @@ def parse_mimetype(mimetype):
 
 def guess_filename(obj, default=None):
     name = getattr(obj, 'name', None)
-    if name and name[0] != '<' and name[-1] != '>':
+    if name and isinstance(name, str) and name[0] != '<' and name[-1] != '>':
         return Path(name).name
     return default
 
@@ -784,30 +793,3 @@ class HeadersMixin:
             return None
         else:
             return int(l)
-
-
-class DummyCookieJar(AbstractCookieJar):
-    """Implements a dummy cookie storage.
-
-    It can be used with the ClientSession when no cookie processing is needed.
-
-    """
-
-    def __init__(self, *, loop=None):
-        super().__init__(loop=loop)
-
-    def __iter__(self):
-        while False:
-            yield None
-
-    def __len__(self):
-        return 0
-
-    def clear(self):
-        pass
-
-    def update_cookies(self, cookies, response_url=None):
-        pass
-
-    def filter_cookies(self, request_url):
-        return None
