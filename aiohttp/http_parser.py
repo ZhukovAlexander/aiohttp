@@ -25,10 +25,14 @@ ASCIISET = set(string.printable)
 METHRE = re.compile('[A-Z0-9$-_.]+')
 VERSRE = re.compile(r'HTTP/(\d+).(\d+)')
 HDRRE = re.compile(rb'[\x00-\x1F\x7F()<>@,;:\[\]={} \t\\\\\"]')
-REQUEST_LINE_RE = re.compile(r'^({METHOD}) {PATH} ({VERSION})'.format(
+REQUEST_LINE_RE = re.compile(r'^({METHOD}) ({PATH}) ({VERSION})'.format(
     METHOD=METHRE.pattern,
-    PATH='([^ ]+)',
+    PATH='[^ ]+',
     VERSION=VERSRE.pattern))
+STATUS_LINE_RE = re.compile(r'({VERSION}) ({CODE})({REASON})?$'.format(
+    VERSION=VERSRE.pattern,
+    CODE='\d{2,3}',
+    REASON='?:\s+(.*)?'))
 
 RawRequestMessage = collections.namedtuple(
     'RawRequestMessage',
@@ -387,30 +391,14 @@ class HttpResponseParserPy(HttpParser):
                 'Status line is too long', self.max_line_size)
 
         line = lines[0].decode('utf-8', 'surrogateescape')
-        try:
-            version, status = line.split(None, 1)
-        except ValueError:
-            raise BadStatusLine(line) from None
-        else:
-            try:
-                status, reason = status.split(None, 1)
-            except ValueError:
-                reason = ''
-
-        # version
-        match = VERSRE.match(version)
+        match = STATUS_LINE_RE.match(line)
         if match is None:
             raise BadStatusLine(line)
-        version = HttpVersion(int(match.group(1)), int(match.group(2)))
+        else:
+            version, n1, n2, status, reason = match.groups('')
 
-        # The status code is a three-digit number
-        try:
-            status = int(status)
-        except ValueError:
-            raise BadStatusLine(line) from None
-
-        if status > 999:
-            raise BadStatusLine(line)
+        version = HttpVersion(int(n1), int(n2))
+        status = int(status)
 
         # read headers
         headers, raw_headers, \
