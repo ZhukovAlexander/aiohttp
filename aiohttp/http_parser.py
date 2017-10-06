@@ -25,6 +25,10 @@ ASCIISET = set(string.printable)
 METHRE = re.compile('[A-Z0-9$-_.]+')
 VERSRE = re.compile(r'HTTP/(\d+).(\d+)')
 HDRRE = re.compile(rb'[\x00-\x1F\x7F()<>@,;:\[\]={} \t\\\\\"]')
+REQUEST_LINE_RE = re.compile(r'^({METHOD}) {PATH} ({VERSION})'.format(
+    METHOD=METHRE.pattern,
+    PATH='([^ ]+)',
+    VERSION=VERSRE.pattern))
 
 RawRequestMessage = collections.namedtuple(
     'RawRequestMessage',
@@ -348,25 +352,13 @@ class HttpRequestParserPy(HttpParser):
 
         # request line
         line = lines[0].decode('utf-8', 'surrogateescape')
-        try:
-            method, path, version = line.split(None, 2)
-        except ValueError:
-            raise BadStatusLine(line) from None
 
-        # method
-        method = method.upper()
-        if not METHRE.match(method):
-            raise BadStatusLine(method)
-
-        # version
-        try:
-            if version.startswith('HTTP/'):
-                n1, n2 = version[5:].split('.', 1)
-                version = HttpVersion(int(n1), int(n2))
-            else:
-                raise BadStatusLine(version)
-        except:
-            raise BadStatusLine(version)
+        match = REQUEST_LINE_RE.match(line)
+        if match is None:
+            raise BadStatusLine(line)
+        else:
+            method, path, version, n1, n2 = match.groups()
+        version = HttpVersion(int(n1), int(n2))
 
         # read headers
         headers, raw_headers, \
